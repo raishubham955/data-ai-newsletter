@@ -1,12 +1,41 @@
 import os
 import re
 import sys
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
 def get_date_range():
     today = datetime.now()
     start_date = today - timedelta(days=7)
     return today.strftime("%Y-%m-%d"), start_date.strftime("%B %d, %Y"), today.strftime("%B %d, %Y")
+
+def fetch_recent_news_rss():
+    topics = [
+        "Data Engineering",
+        "Business Intelligence Analytics",
+        "Artificial Intelligence Data",
+        "Tech Data Startup Funding",
+    ]
+    articles = []
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    for topic in topics:
+        try:
+            query = urllib.parse.quote(f"{topic} when:7d")
+            url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                xml_data = resp.read()
+                root = ET.fromstring(xml_data)
+                for item in root.findall(".//item")[:5]:
+                    title = item.findtext("title", "")
+                    link = item.findtext("link", "")
+                    if title:
+                        articles.append(f"- {title} [{link}]")
+        except Exception as e:
+            print(f"Warning: Could not fetch RSS news for '{topic}': {e}")
+    return "\n".join(articles)
 
 def validate_and_count_words(line):
     # Extracts text before [URL] and counts words
@@ -89,14 +118,37 @@ def generate_report():
     
     model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
     print(f"Generating newsletter for {start_str} to {end_str} using {model_name}...")
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            tools=[{"google_search": {}}],
-            temperature=0.2,
+    
+    try:
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[{"google_search": {}}],
+                temperature=0.2,
+            )
         )
-    )
+    except Exception as e:
+        error_msg = str(e)
+        if "RESOURCE_EXHAUSTED" in error_msg or "429" in error_msg:
+            print("Notice: Search Grounding quota exceeded or unbilled project detected.")
+            print("Fetching live news headlines via RSS feeds and generating briefing directly...")
+            live_news = fetch_recent_news_rss()
+            fallback_prompt = (
+                f"{prompt}\n\n"
+                f"RECENT LIVE HEADLINES & SOURCES (PAST 7 DAYS):\n"
+                f"{live_news}\n\n"
+                f"Synthesize the briefing adhering strictly to all formatting rules."
+            )
+            response = client.models.generate_content(
+                model=model_name,
+                contents=fallback_prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.2,
+                )
+            )
+        else:
+            raise e
 
     report_text = response.text.strip()
     
