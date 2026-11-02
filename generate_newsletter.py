@@ -87,9 +87,10 @@ def generate_report():
 
     client = genai.Client(api_key=api_key)
     
-    print(f"Generating newsletter for {start_str} to {end_str}...")
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+    print(f"Generating newsletter for {start_str} to {end_str} using {model_name}...")
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=model_name,
         contents=prompt,
         config=types.GenerateContentConfig(
             tools=[{"google_search": {}}],
