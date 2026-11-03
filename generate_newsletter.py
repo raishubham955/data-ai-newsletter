@@ -13,10 +13,12 @@ def get_date_range():
 
 def fetch_recent_news_rss():
     topics = [
-        "Data Engineering",
-        "Business Intelligence Analytics",
-        "Artificial Intelligence Data",
-        "Tech Data Startup Funding",
+        "Data Engineering lakehouse dbt",
+        "Microsoft Fabric Power BI analytics",
+        "Databricks Snowflake data AI",
+        "AI agents data engineering text-to-sql",
+        "OpenAI Anthropic enterprise AI data",
+        "Data tech startup funding acquisition",
     ]
     articles = []
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -30,75 +32,196 @@ def fetch_recent_news_rss():
                 root = ET.fromstring(xml_data)
                 for item in root.findall(".//item")[:5]:
                     title = item.findtext("title", "")
-                    link = item.findtext("link", "")
                     if title:
-                        articles.append(f"- {title} [{link}]")
+                        articles.append(f"- {title}")
         except Exception as e:
             print(f"Warning: Could not fetch RSS news for '{topic}': {e}")
     return "\n".join(articles)
 
 def validate_and_count_words(line):
-    # Extracts text before [URL] and counts words
-    m = re.match(r"^-\s+(.*?)\s+\[(https?://[^\s\]]+)\]$", line.strip())
-    if not m:
+    line = line.strip()
+    if not line.startswith("- "):
         return None, 0
-    text = m.group(1).strip()
+    text = line[2:].strip()
     words = text.split()
     return text, len(words)
 
 def build_prompt(today_str, start_str, end_str):
-    return f"""Role: Senior Technology Research Analyst specializing in Data Engineering, Analytics, BI, and AI.
+    return f"""# MASTER PROMPT: Weekly Data & AI Industry Intelligence
 
-Task: Prepare the weekly Data & AI Industry Intelligence report covering the LAST 7 DAYS ({start_str} to {end_str}).
+## 1. Your Role
 
-CRITICAL OUTPUT FORMATTING RULES (STRICTLY ENFORCE):
-1. Each news item must appear on a single line starting with a dash: - 
-2. One line must contain only ONE news development.
-3. Every single news item MUST contain between 10 and 15 words only (excluding the source URL in brackets at the end).
-4. Include the company or product name in every news line.
-5. Add the verified original source URL in brackets at the end of each line, e.g. [https://www.example.com]
-6. No paragraphs, sub-bullets, asterisks inside lines, or lengthy explanations.
-7. Use simple, direct, conversational English.
-8. Maintain the exact following sections with bold headers:
+Act as a Senior Technology Research Analyst specializing in Data Engineering, Data Analytics, Business Intelligence, Cloud Data Platforms, and Artificial Intelligence.
 
-**Top Data & AI News | Weekly Edition ({end_str})**
+Your responsibility is to research the latest industry developments from the previous 7 days ({start_str} to {end_str}) and prepare a comprehensive weekly intelligence report.
 
-**Data Engineering**
-- [Item 1 (10-15 words)] [Source URL]
-- [Item 2 (10-15 words)] [Source URL]
-- [Item 3 (10-15 words)] [Source URL]
-- [Item 4 (10-15 words)] [Source URL]
+The report will be delivered to my email every week and used to create my LinkedIn newsletter.
 
-**Data Analytics & BI**
-- [Item 1 (10-15 words)] [Source URL]
-- [Item 2 (10-15 words)] [Source URL]
-- [Item 3 (10-15 words)] [Source URL]
-- [Item 4 (10-15 words)] [Source URL]
+My objective is to keep data professionals informed about the latest industry developments and help them understand where the Data and AI industry is heading.
 
-**AI x Data**
-- [Item 1 (10-15 words)] [Source URL]
-- [Item 2 (10-15 words)] [Source URL]
-- [Item 3 (10-15 words)] [Source URL]
-- [Item 4 (10-15 words)] [Source URL]
+## 2. Main Research Categories
 
-**Funding & Acquisitions**
-- [Item 1 (10-15 words)] [Source URL]
-- [Item 2 (10-15 words)] [Source URL]
-- [Item 3 (10-15 words)] [Source URL]
-- [Item 4 (10-15 words)] [Source URL]
+### A. Data Engineering
+Track the latest developments in:
+- Data Engineering tools and technologies.
+- ETL and ELT platforms.
+- Data pipelines and workflow orchestration.
+- Data warehouses, data lakes, and lakehouse architecture.
+- Real-time data processing and streaming.
+- Data quality, observability, and governance.
+- Apache Spark, Kafka, Flink, Airflow, and dbt.
+- Delta Lake and Apache Iceberg.
+- Data integration and migration solutions.
+- AI-powered data engineering and autonomous pipelines.
+- Database innovations and vector databases.
+- Data infrastructure and cloud computing.
 
-**New Tools & Hardware**
-- [Item 1 (10-15 words)] [Source URL]
-- [Item 2 (10-15 words)] [Source URL]
-- [Item 3 (10-15 words)] [Source URL]
+### B. Data Analytics and Business Intelligence
+Track developments related to:
+- Microsoft Power BI.
+- Microsoft Fabric.
+- Tableau and Looker.
+- Databricks AI/BI.
+- Snowflake analytics.
+- Semantic models and semantic layers.
+- Self-service analytics.
+- Natural language querying.
+- AI-powered dashboards and reporting.
+- Predictive and advanced analytics.
+- Business intelligence automation.
+- Analytics engineering.
 
-**Industry Insights**
-- [Item 1 (10-15 words)] [Source URL]
-- [Item 2 (10-15 words)] [Source URL]
-- [Item 3 (10-15 words)] [Source URL]
-- [Item 4 (10-15 words)] [Source URL]
+### C. AI Developments in Data Engineering and Analytics (HIGH PRIORITY)
+Research how AI is changing traditional data engineering and analytics workflows.
+Cover:
+- AI agents for Data Engineering and AI Data Analysts.
+- Autonomous data pipelines.
+- AI-powered SQL generation and Text-to-SQL solutions.
+- AI-assisted Python and coding.
+- AI-powered ETL and data transformation.
+- Automated data quality monitoring.
+- AI-powered database management.
+- Agentic analytics.
+- Model Context Protocol (MCP) for data platforms.
+- Retrieval Augmented Generation (RAG).
+- Enterprise AI data integration.
+- AI-powered reporting and visualization.
+- AI-assisted data migration.
+- AI agents interacting with enterprise databases.
+Focus on real product developments, practical use cases, and industry adoption.
 
-Strictly count words before outputting. Every item must be between 10 and 15 words.
+### D. Major AI Company Developments
+Closely monitor:
+- OpenAI: GPT models, ChatGPT, Codex, APIs, agents, and developer tools.
+- Anthropic: Claude models, Claude Code, Agent Skills, MCP, and enterprise AI.
+- Google: Gemini, Google DeepMind, Vertex AI, and AI developer tools.
+- Microsoft: Copilot, Azure AI, Fabric AI, and enterprise AI.
+- Meta: Llama models, AI infrastructure, and open-source AI.
+- Amazon: AWS Bedrock, Amazon Q, and AI services.
+- Perplexity: AI search, enterprise solutions, and developer products.
+- xAI: Grok models and AI infrastructure.
+- Mistral AI: Enterprise models and AI development tools.
+- Cohere: Enterprise AI and retrieval solutions.
+Include only developments relevant to Data Engineering, Analytics, databases, enterprise data, and AI-powered development.
+
+### E. Major Data Technology Companies
+Monitor these companies and their products:
+- Microsoft (Fabric, Power BI, Azure Data Factory, Azure Synapse, OneLake, Fabric Data Engineering, Fabric Data Warehouse, Copilot)
+- Databricks (Lakehouse, Delta Lake, Unity Catalog, Databricks SQL, Lakeflow, Genie, Genie Code, Lakebase, AI/BI, Mosaic AI, MLflow)
+- Snowflake (Snowflake Cortex AI, Snowpark, Snowflake Intelligence, Snowflake Openflow, Snowflake Data Cloud, Apache Iceberg integration)
+- Other Important Companies: Google Cloud, AWS, Oracle, Salesforce, MongoDB, Confluent, dbt Labs, Fivetran, Informatica, Palantir, Elastic, ThoughtSpot, Qlik, Teradata, Starburst, ClickHouse, SingleStore.
+Track their new features, product releases, partnerships, acquisitions, funding, and technology announcements.
+
+## 3. Funding, Acquisitions and Business Developments
+Research important industry business news, including startup funding rounds (Series A/B/C/later), M&A, partnerships, IPOs, enterprise contracts, GPU/cloud investments. Prioritize Data Engineering, Analytics, AI, databases, and enterprise software. Include funding amounts when officially available.
+
+## 4. New Product and Feature Releases
+Prioritize actual product launches, GA announcements, public beta releases, and significant feature enhancements. Do not include minor updates.
+
+## 5. Strict Research Rules
+1. Research news published within the previous 7 calendar days ({start_str} to {end_str}).
+2. Mention actual announcement details accurately; never invent releases, amounts, or acquisitions.
+3. Exclude rumours and unconfirmed claims. Avoid duplicate news across different sections.
+4. Include relevant global developments (and significant Indian data/AI industry developments when applicable).
+
+## 6. FINAL REPORT FORMAT
+Prepare the report using EXACTLY the following structure:
+
+# WEEKLY DATA & AI INDUSTRY INTELLIGENCE
+
+Reporting Period: {start_str} to {end_str}
+
+### 1. TOP 5 INDUSTRY HEADLINES
+
+- [Headline 1 (10-15 words)]
+- [Headline 2 (10-15 words)]
+- [Headline 3 (10-15 words)]
+- [Headline 4 (10-15 words)]
+- [Headline 5 (10-15 words)]
+
+### 2. DATA ENGINEERING NEWS
+
+- [Item 1 (10-15 words)]
+- [Item 2 (10-15 words)]
+- [Item 3 (10-15 words)]
+- [Item 4 (10-15 words)]
+
+### 3. DATA ANALYTICS & BUSINESS INTELLIGENCE
+
+- [Item 1 (10-15 words)]
+- [Item 2 (10-15 words)]
+- [Item 3 (10-15 words)]
+- [Item 4 (10-15 words)]
+
+### 4. AI x DATA
+
+- [Item 1 (10-15 words)]
+- [Item 2 (10-15 words)]
+- [Item 3 (10-15 words)]
+- [Item 4 (10-15 words)]
+
+### 5. FUNDING, ACQUISITIONS & PARTNERSHIPS
+
+- [Item 1 (10-15 words)]
+- [Item 2 (10-15 words)]
+- [Item 3 (10-15 words)]
+- [Item 4 (10-15 words)]
+
+### 6. NEW PRODUCTS & FEATURE RELEASES
+
+- [Item 1 (10-15 words)]
+- [Item 2 (10-15 words)]
+- [Item 3 (10-15 words)]
+- [Item 4 (10-15 words)]
+
+### 7. INDUSTRY INSIGHTS: WHAT THIS MEANS FOR DATA PROFESSIONALS
+
+- [Item 1 (10-15 words)]
+- [Item 2 (10-15 words)]
+- [Item 3 (10-15 words)]
+- [Item 4 (10-15 words)]
+
+### 8. LINKEDIN NEWSLETTER TOPIC IDEAS
+
+1. [Topic 1 Headline]
+2. [Topic 2 Headline]
+3. [Topic 3 Headline]
+
+## 7. STRICT OUTPUT FORMATTING RULES (MANDATORY)
+
+- One News = One Line. Every news item must appear on a single line starting with a dash: -
+- Each line must contain exactly one news development.
+- EVERY single news line MUST contain between 10 and 15 words only.
+- Do NOT write paragraphs under any section.
+- Do NOT add separate What Happened / Why Important / Impact fields.
+- Combine the announcement and its importance into one concise sentence.
+- CRITICAL: DO NOT INCLUDE SOURCE URLS OR HYPERLINKS IN THE OUTPUT.
+- Do not add lengthy explanations.
+- Do not repeat the same news in multiple sections.
+- Use simple, conversational English.
+- Headings and reporting dates are exempt from the word limit.
+- Company names, product names, technical terms, and financial figures must remain accurate.
+- Strictly count words for each news line before generating. Every single news item must be 10-15 words.
 """
 
 def generate_report():
@@ -136,9 +259,9 @@ def generate_report():
             live_news = fetch_recent_news_rss()
             fallback_prompt = (
                 f"{prompt}\n\n"
-                f"RECENT LIVE HEADLINES & SOURCES (PAST 7 DAYS):\n"
+                f"RECENT LIVE HEADLINES (PAST 7 DAYS):\n"
                 f"{live_news}\n\n"
-                f"Synthesize the briefing adhering strictly to all formatting rules."
+                f"Synthesize the briefing adhering strictly to all formatting rules. Do NOT include URLs."
             )
             response = client.models.generate_content(
                 model=model_name,
@@ -162,7 +285,13 @@ def generate_report():
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(report_text + "\n")
 
+    # Also save/update the root edition copy
+    root_filepath = os.path.join(os.path.dirname(__file__), filename)
+    with open(root_filepath, "w", encoding="utf-8") as f:
+        f.write(report_text + "\n")
+
     print(f"Successfully generated and saved: {filepath}")
+    print(f"Successfully updated root copy: {root_filepath}")
 
 if __name__ == "__main__":
     generate_report()
