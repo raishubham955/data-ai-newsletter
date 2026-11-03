@@ -6,12 +6,68 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
-def get_date_range():
+def get_date_range_and_previous_news():
     today = datetime.now()
-    start_date = today - timedelta(days=7)
-    return today.strftime("%Y-%m-%d"), start_date.strftime("%B %d, %Y"), today.strftime("%B %d, %Y")
+    today_date = today.date()
 
-def fetch_recent_news_rss():
+    editions_dir = os.path.join(os.path.dirname(__file__), "editions")
+    last_date = None
+    previous_bullets = []
+
+    if os.path.exists(editions_dir):
+        edition_files = []
+        for fname in os.listdir(editions_dir):
+            m = re.match(r"^edition_(\d{4}-\d{2}-\d{2})\.md$", fname)
+            if m:
+                try:
+                    d = datetime.strptime(m.group(1), "%Y-%m-%d").date()
+                    edition_files.append((d, os.path.join(editions_dir, fname)))
+                except ValueError:
+                    pass
+
+        # Sort descending by date
+        edition_files.sort(key=lambda x: x[0], reverse=True)
+
+        # Find the latest edition published strictly before today
+        past_files = [x for x in edition_files if x[0] < today_date]
+        if past_files:
+            target_entry = past_files[0]
+        elif edition_files:
+            # If running on the same day as the newest edition, check for an older edition
+            if len(edition_files) > 1:
+                target_entry = edition_files[1]
+            else:
+                target_entry = edition_files[0]
+        else:
+            target_entry = None
+
+        if target_entry:
+            last_date, target_path = target_entry
+            try:
+                with open(target_path, "r", encoding="utf-8") as pf:
+                    for line in pf:
+                        line_s = line.strip()
+                        if line_s.startswith("- "):
+                            previous_bullets.append(line_s)
+            except Exception as e:
+                print(f"Warning: Could not read previous edition ({target_path}): {e}")
+
+    # Fallback if no prior edition found or if dates match
+    if not last_date or last_date >= today_date:
+        last_date = today_date - timedelta(days=7)
+
+    delta_days = (today_date - last_date).days
+    if delta_days <= 0:
+        delta_days = 7
+
+    today_file_str = today.strftime("%Y-%m-%d")
+    start_str = last_date.strftime("%B %d, %Y")
+    end_str = today.strftime("%B %d, %Y")
+
+    return today_file_str, start_str, end_str, delta_days, previous_bullets
+
+def fetch_recent_news_rss(delta_days=7):
+    days = max(3, delta_days)
     topics = [
         "Data Engineering lakehouse dbt",
         "Microsoft Fabric Power BI analytics",
@@ -24,7 +80,7 @@ def fetch_recent_news_rss():
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     for topic in topics:
         try:
-            query = urllib.parse.quote(f"{topic} when:7d")
+            query = urllib.parse.quote(f"{topic} when:{days}d")
             url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=10) as resp:
@@ -46,14 +102,32 @@ def validate_and_count_words(line):
     words = text.split()
     return text, len(words)
 
-def build_prompt(today_str, start_str, end_str):
+def build_prompt(today_str, start_str, end_str, previous_bullets):
+    previous_block = ""
+    if previous_bullets:
+        bullets_text = "\n".join(previous_bullets[:40])
+        previous_block = f"""
+## MANDATORY DEDUPLICATION: ALREADY PUBLISHED NEWS (DO NOT REPEAT)
+
+The following developments were ALREADY reported in the previous edition ({start_str}):
+{bullets_text}
+
+CRITICAL DEDUPLICATION RULES:
+1. ONLY pick news developments announced strictly AFTER {start_str} up to {end_str}.
+2. Do NOT duplicate, re-report, or rephrase any news story from the previous edition above.
+3. Every news item must be a fresh development that occurred strictly between {start_str} and {end_str}.
+4. If a previously mentioned tool or company is included, it MUST be a brand new, subsequent milestone announced after {start_str}.
+"""
+
     return f"""# MASTER PROMPT: Weekly Data & AI Industry Intelligence
 
+Reporting Period: {start_str} to {end_str}
+{previous_block}
 ## 1. Your Role
 
 Act as a Senior Technology Research Analyst specializing in Data Engineering, Data Analytics, Business Intelligence, Cloud Data Platforms, and Artificial Intelligence.
 
-Your responsibility is to research the latest industry developments from the previous 7 days ({start_str} to {end_str}) and prepare a comprehensive weekly intelligence report.
+Your responsibility is to research the latest industry developments that occurred strictly between {start_str} (last execution date) and {end_str} (current execution date) and prepare a comprehensive weekly intelligence report.
 
 The report will be delivered to my email every week and used to create my LinkedIn newsletter.
 
@@ -139,10 +213,11 @@ Research important industry business news, including startup funding rounds (Ser
 Prioritize actual product launches, GA announcements, public beta releases, and significant feature enhancements. Do not include minor updates.
 
 ## 5. Strict Research Rules
-1. Research news published within the previous 7 calendar days ({start_str} to {end_str}).
-2. Mention actual announcement details accurately; never invent releases, amounts, or acquisitions.
-3. Exclude rumours and unconfirmed claims. Avoid duplicate news across different sections.
-4. Include relevant global developments (and significant Indian data/AI industry developments when applicable).
+1. Research news strictly published between {start_str} and {end_str} (after the previous execution date).
+2. Do NOT duplicate or repeat any news from the previous edition. Only fresh developments announced after {start_str}.
+3. Mention actual announcement details accurately; never invent releases, amounts, or acquisitions.
+4. Exclude rumours and unconfirmed claims. Avoid duplicate news across different sections.
+5. Include relevant global developments (and significant Indian data/AI industry developments when applicable).
 
 ## 6. FINAL REPORT FORMAT
 Prepare the report using EXACTLY the following structure:
@@ -246,8 +321,8 @@ def generate_report():
         print("ERROR: GEMINI_API_KEY environment variable not set.")
         sys.exit(1)
 
-    today_file_str, start_str, end_str = get_date_range()
-    prompt = build_prompt(today_file_str, start_str, end_str)
+    today_file_str, start_str, end_str, delta_days, previous_bullets = get_date_range_and_previous_news()
+    prompt = build_prompt(today_file_str, start_str, end_str, previous_bullets)
 
     # Use Google GenAI SDK
     from google import genai
@@ -256,7 +331,9 @@ def generate_report():
     client = genai.Client(api_key=api_key)
     
     model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
-    print(f"Generating newsletter for {start_str} to {end_str} using {model_name}...")
+    print(f"Generating newsletter for period {start_str} to {end_str} ({delta_days} days) using {model_name}...")
+    if previous_bullets:
+        print(f"Loaded {len(previous_bullets)} previously published stories to prevent duplication.")
     
     try:
         response = client.models.generate_content(
@@ -271,13 +348,13 @@ def generate_report():
         error_msg = str(e)
         if "RESOURCE_EXHAUSTED" in error_msg or "429" in error_msg:
             print("Notice: Search Grounding quota exceeded or unbilled project detected.")
-            print("Fetching live news headlines via RSS feeds and generating briefing directly...")
-            live_news = fetch_recent_news_rss()
+            print(f"Fetching live news headlines via RSS feeds for past {delta_days} days...")
+            live_news = fetch_recent_news_rss(delta_days=delta_days)
             fallback_prompt = (
                 f"{prompt}\n\n"
-                f"RECENT LIVE HEADLINES (PAST 7 DAYS):\n"
+                f"RECENT LIVE HEADLINES (PAST {delta_days} DAYS, AFTER {start_str}):\n"
                 f"{live_news}\n\n"
-                f"Synthesize the briefing adhering strictly to all formatting rules. Do NOT include URLs."
+                f"Synthesize the briefing adhering strictly to all formatting rules. Do NOT include URLs or repeat previous news."
             )
             response = client.models.generate_content(
                 model=model_name,
