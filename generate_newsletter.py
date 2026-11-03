@@ -222,6 +222,22 @@ Reporting Period: {start_str} to {end_str}
 - Headings and reporting dates are exempt from the word limit.
 - Company names, product names, technical terms, and financial figures must remain accurate.
 - Strictly count words for each news line before generating. Every single news item must be 10-15 words.
+
+## 8. STRICT TECHNICAL SPECIFICITY (NO VAGUE/GENERIC STATEMENTS)
+
+Every news item MUST be concrete, detailed, and technically specific:
+- Name the exact feature, protocol, API, parameter, library, benchmark, or architecture.
+- Use precise technical terminology (e.g., DAX, CDC, Iceberg, Delta Lake, MCP, S/4HANA, Zero-ETL, Structured Outputs, OpenTelemetry).
+- STRICTLY BANNED VAGUE PHRASES:
+  * DO NOT WRITE: "released new capabilities", "simplifying workflows", "improving analytics", "enhancing features", "expanding possibilities", "improving performance", "advancing workflows".
+  * INSTEAD WRITE: What exact tool was released, what exact mechanism it uses, and what architectural problem it solves.
+- Examples:
+  * BAD (Vague): "Microsoft released new Fabric capabilities, simplifying enterprise analytics and data management workflows."
+  * GOOD (Specific): "Microsoft Fabric launched native Apache Iceberg support, allowing direct Delta-to-Iceberg engine querying."
+  * BAD (Vague): "OpenAI introduced new developer capabilities, expanding automated coding and data workflows."
+  * GOOD (Specific): "OpenAI introduced Structured Outputs in the Responses API, guaranteeing strict JSON schema compliance."
+  * BAD (Vague): "Databricks introduced additional Lakeflow features, reducing infrastructure management for data ingestion."
+  * GOOD (Specific): "Databricks released Lakeflow Connect for serverless change data capture across enterprise databases."
 """
 
 def generate_report():
